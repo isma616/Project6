@@ -186,12 +186,32 @@ object lisp {
       if(env == globalEnv)
         globalEnv = env.extendRec(name, env1 => eval(body, env1))
       eval(rest, env.extendRec(name, env1 => eval(body, env1))) // evaluate
-    case 'def :: (Symbol(name) :: args) :: body :: rest :: Nil =>
-      println("def " + name + ", args = " + args)
-      val newEnv = env.extendRec(name, env1 => eval(mkLambda(args map(x => x match { case Symbol(name) => name; case Nil => error("Expected argument name!") }), body, env), env1))
+    case 'def :: (Symbol(name) :: args) :: body :: rest :: Nil => // improved def: check
+      val newArgs = args map(x => x match {
+	      case Symbol(name)	=> name
+	      case Nil		=> error("Expected argument name instead of " + x)
+      })
+      val newEnv = env.extendRec(name, env1 => eval(mkLambda(newArgs, body, env), env1))
       if(env == globalEnv)
         globalEnv = newEnv
       eval(rest, newEnv)
+    case 'cond :: args =>
+      def doCond(args: Data): Data = args match {
+        case x :: Nil => x match {
+            case else1 :: exprElse :: Nil =>
+                eval(exprElse, env)
+            case _ =>
+                error("Expected (else exprElse)")
+        }
+        case x :: xs => x match {
+            case test :: expr :: Nil =>
+                if(eval(test, env) != 0) eval(expr, env)
+                else doCond(xs)
+            case _ =>
+                error("Expected (test expr)")
+        }
+      }
+      doCond(args)
     case 'quote :: y :: Nil =>
       y
     case 'lambda :: params :: body :: Nil =>
@@ -218,10 +238,38 @@ object lisp {
 
 object main {
   def main(args: Array[String]) {
-    println("Welcome to 'Ach mein gott, not jetzt another fucking Lisp Interpreter!' (AMGNJAFLI). Ctrl+C quits (d'uh). Have fun!")
+    println("# Welcome to 'Yet Another Lisp Interpreter' (YALI)")
+    println("# ")
+    println("# Here's a list of builtins: ")
+    println("#   (= x y)              equality test")
+    println("#   (+ x y)              addition")
+    println("#   (- x y)              subtraction")
+    println("#   (* x y)              multiplication")
+    println("#   (/ x y)              division")
+    println("#   nil                  nil/null/empty list")
+    println("#   (cons elem list)     prepend elem to list")
+    println("#   (null? x)            nullity test")
+    println("#   (def (name arg1 arg2) body test)     define a new function")
+    println("#   (if condition thenexpr elseexpr)     if statement")
+    println("#   (cond (cond1 expr1) (cond2 exprn) (condn exprn) (else exprelse))")
+    
+    // define concat
+    lisp evaluate "(def (concat self xs ys) (cond ((null? xs) ys) (else (cons (car xs) (self self (cdr xs) ys)))) (concat concat (cons 1 (cons 2 nil)) (cons 3 (cons 4 nil))))"
+    
+    // define reverse
+    lisp evaluate "(def (reverse self xs) (cond ((null? xs) nil) (else (concat concat (self self (cdr xs)) (cons (car xs) nil)))) (reverse reverse (cons 1 (cons 2 (cons 3 (cons 4 nil))))))"
+    
+    println("# ")
+    println("# And for convenience, the following functions are available to you:")
+    println("#   (concat list1 list2)     concatenate two lists")
+    println("#   (reverse list1)          reverse a list")
+    println("# ")
+    println("# That's it! To exit, hit Ctrl+C. Have fun!")
+    println()
+    
     while(true) {
-	print("lisp> ")
-	println(lisp evaluate readLine)
+        print("lisp> ")
+        println(lisp evaluate readLine)
     }
   }
 
