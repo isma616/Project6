@@ -267,9 +267,35 @@ object main {
     println("# That's it! To exit, hit Ctrl+C. Have fun!")
     println()
     
+    def balanced(str: String): Boolean = {
+        def balanced0(chars: List[Char], count: Int): Boolean = chars match {
+            case x :: xs =>
+                val inc = x match {
+                    case '(' =>  1
+                    case ')' => -1
+                    case _   =>  0
+                }
+                // for some reason if we replace 'inc' with the
+                // match directly it.. doesn't work
+                balanced0(xs, count + inc)
+            case Nil =>
+                (count == 0)
+        }
+        balanced0(str.toList, 0)
+    }
+    
     while(true) {
-        print("lisp> ")
-        println(lisp evaluate readLine)
+        print("yali > ")
+        var line = readLine
+        while(!balanced(line)) {
+            print("       ")
+            line = line + " " + readLine
+        }
+        try {
+            println(lisp evaluate line)
+        } catch {
+            case ex: RuntimeException => println("error: " + ex.getMessage)
+        }
     }
   }
 
